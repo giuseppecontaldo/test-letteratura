@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Test di Letteratura Italiana</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --primary:#1a4a8a;--primary-light:#e8f0fb;--accent:#c0392b;
+  --success:#27ae60;--warning:#e67e22;--gray:#6c757d;
+  --border:#dee2e6;--radius:12px;--shadow:0 2px 16px rgba(0,0,0,.10);
+}
+html,body{height:100%;overscroll-behavior:none}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f0f4f8;min-height:100vh;color:#222;font-size:16px;-webkit-font-smoothing:antialiased}
+.screen{display:none;min-height:100vh}
+.screen.active{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:20px 14px 48px}
+.card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:26px 22px;width:100%;max-width:480px}
+.logo{text-align:center;margin-bottom:18px}
+.logo h1{font-size:20px;font-weight:700;color:var(--primary);line-height:1.3}
+.logo p{font-size:13px;color:var(--gray);margin-top:5px}
+label{display:block;font-size:13px;font-weight:600;color:#444;margin-bottom:5px;margin-top:14px}
+input[type=text]{width:100%;border:1.5px solid var(--border);border-radius:8px;padding:12px 14px;font-size:16px;transition:border-color .2s;background:#fff;-webkit-appearance:none;appearance:none}
+input[type=text]:focus{outline:none;border-color:var(--primary)}
+.email-split{display:flex;align-items:stretch;border:1.5px solid var(--border);border-radius:8px;overflow:hidden;background:#fff}
+.email-split:focus-within{border-color:var(--primary)}
+.email-split input{flex:1;border:none;padding:12px 10px;font-size:16px;min-width:0;outline:none;background:#fff;-webkit-appearance:none}
+.email-domain{display:flex;align-items:center;padding:0 9px;background:#f4f6f8;font-size:13px;color:#666;white-space:nowrap;border-left:1px solid var(--border);flex-shrink:0;user-select:none}
+.btn{display:block;width:100%;padding:15px;border:none;border-radius:8px;font-size:17px;font-weight:700;cursor:pointer;margin-top:18px;-webkit-appearance:none;background:var(--primary);color:#fff}
+.btn:active{opacity:.88;transform:scale(.98)}
+.err{color:var(--accent);font-size:13px;margin-top:10px;padding:9px 12px;background:#fdf0ef;border-radius:6px;display:none;line-height:1.5}
+.quiz-header{background:var(--primary);color:#fff;width:100%;position:sticky;top:0;z-index:10;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+.q-num{font-weight:700;font-size:15px}
+.progress-bar-wrap{height:3px;background:rgba(255,255,255,.2);flex:1;border-radius:2px;margin:0 12px}
+.progress-bar{height:100%;background:#fff;border-radius:2px;transition:width .3s}
+.timer-ring{position:relative;width:48px;height:48px;flex-shrink:0}
+.timer-ring svg{transform:rotate(-90deg)}
+.timer-ring circle{fill:none;stroke-width:4}
+.timer-bg{stroke:rgba(255,255,255,.22)}
+.timer-arc{stroke:#fff;stroke-linecap:round;transition:stroke-dashoffset .9s linear,stroke .4s}
+.timer-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#fff}
+.quiz-body{width:100%;max-width:600px;padding:0 0 16px}
+.question-card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);margin:14px;padding:20px 16px}
+.q-text{font-size:15px;font-weight:600;line-height:1.55;margin-bottom:16px;color:#1a1a2e}
+.opt{display:flex;align-items:center;gap:11px;padding:13px;border:1.5px solid var(--border);border-radius:10px;margin-bottom:9px;cursor:pointer;transition:background .12s,border-color .15s;min-height:52px;-webkit-user-select:none;user-select:none}
+.opt:active{background:var(--primary-light)}
+.opt.correct{background:#e8faf0;border-color:var(--success)!important}
+.opt.wrong{background:#fdf0ef;border-color:var(--accent)!important}
+.opt.missed{background:#fff8ec;border-color:var(--warning)!important}
+.opt-letter{width:30px;height:30px;border-radius:50%;background:var(--primary);color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.opt.correct .opt-letter{background:var(--success)}
+.opt.wrong .opt-letter{background:var(--accent)}
+.opt.missed .opt-letter{background:var(--warning)}
+.opt-text{font-size:14px;line-height:1.4;flex:1}
+.feedback{font-size:13px;margin-top:11px;padding:10px 12px;border-radius:7px;display:none;line-height:1.6}
+.feedback.show{display:block}
+.feedback.correct-fb{background:#e8faf0;color:#155724;border-left:3px solid var(--success)}
+.feedback.wrong-fb{background:#fdf0ef;color:#721c24;border-left:3px solid var(--accent)}
+.feedback.missed-fb{background:#fff8ec;color:#856404;border-left:3px solid var(--warning)}
+.nav-btn{display:block;width:calc(100% - 28px);margin:0 14px 8px;padding:16px;border:none;border-radius:10px;font-size:17px;font-weight:700;cursor:pointer;background:var(--primary);color:#fff;-webkit-appearance:none}
+.nav-btn:disabled{opacity:.35;cursor:default}
+.nav-btn:active:not(:disabled){opacity:.88}
+.results-wrap{width:100%;max-width:520px;padding-bottom:30px}
+.score-circle{width:130px;height:130px;border-radius:50%;border:6px solid var(--primary);display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto 18px;background:var(--primary-light)}
+.score-circle .big{font-size:38px;font-weight:800;color:var(--primary);line-height:1}
+.score-circle .sub{font-size:12px;color:var(--gray)}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin:14px 0}
+.stat-box{background:#fff;border-radius:10px;padding:12px 6px;text-align:center;box-shadow:var(--shadow)}
+.stat-box .n{font-size:24px;font-weight:800}
+.stat-box .l{font-size:11px;color:var(--gray);margin-top:2px}
+.stat-box.c .n{color:var(--success)}
+.stat-box.w .n{color:var(--accent)}
+.stat-box.s .n{color:var(--warning)}
+.res-list{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-top:14px}
+.res-item{padding:13px 14px;border-bottom:1px solid var(--border);font-size:13px;line-height:1.5}
+.res-item:last-child{border-bottom:none}
+.res-badge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700;margin-right:5px}
+.badge-c{background:#e8faf0;color:#155724}
+.badge-w{background:#fdf0ef;color:#721c24}
+.badge-s{background:#fff8ec;color:#856404}
+.res-q{font-weight:600;margin-bottom:3px}
+.res-ans{color:var(--gray)}
+.res-correct{color:var(--success);font-weight:600}
+.dl-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:16px;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;background:var(--primary);color:#fff;margin-top:14px;-webkit-appearance:none}
+.dl-btn:active{opacity:.88}
+@media(max-width:380px){
+  .card{padding:20px 14px}
+  .q-text{font-size:14px}
+  .opt-text{font-size:13px}
+  .email-domain{font-size:11px;padding:0 6px}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="screen-login" class="screen active">
+  <div class="card" style="margin-top:28px">
+    <div class="logo">
+      <h1>📚 Test di Letteratura Italiana</h1>
+      <p>IIS Cattaneo Milano — Sonia Merendino</p>
+    </div>
+    <label for="nome">Nome *</label>
+    <input type="text" id="nome" placeholder="Inserisci il tuo nome" autocomplete="given-name">
+    <label for="cognome">Cognome *</label>
+    <input type="text" id="cognome" placeholder="Inserisci il tuo cognome" autocomplete="family-name">
+    <label for="classe">Classe *</label>
+    <input type="text" id="classe" placeholder="Es. 5A, 5B...">
+    <label>Email scolastica *</label>
+    <div class="email-split">
+      <input type="text" id="email-local" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
+      <div class="email-domain">@iiscattaneomilano.edu.it</div>
+    </div>
+    <div id="login-err" class="err"></div>
+    <button class="btn" onclick="doLogin()">Inizia il Test &#8594;</button>
+    <p style="font-size:11px;color:#bbb;text-align:center;margin-top:12px">50 domande &middot; 50 secondi ciascuna</p>
+  </div>
+</div>
+
+<!-- TEST -->
+<div id="screen-quiz" class="screen">
+  <div class="quiz-header">
+    <div class="q-num" id="q-num-display">Domanda 1/50</div>
+    <div class="progress-bar-wrap"><div class="progress-bar" id="progress-bar" style="width:2%"></div></div>
+    <div class="timer-ring">
+      <svg viewBox="0 0 48 48" width="48" height="48">
+        <circle class="timer-bg" cx="24" cy="24" r="20"/>
+        <circle class="timer-arc" id="timer-arc" cx="24" cy="24" r="20" stroke-dasharray="125.7" stroke-dashoffset="0"/>
+      </svg>
+      <div class="timer-text" id="timer-text">50</div>
+    </div>
+  </div>
+  <div class="quiz-body" id="quiz-body"></div>
+  <button class="nav-btn" id="nav-btn" onclick="nextQuestion()">Avanti &#8594;</button>
+</div>
+
+<!-- RESULTS -->
+<div id="screen-results" class="screen">
+  <div class="results-wrap">
+    <div class="card" style="text-align:center;margin-bottom:0">
+      <h2 style="font-size:17px;color:var(--primary);margin-bottom:14px">Risultato del Test</h2>
+      <div class="score-circle"><div class="big" id="res-score">0</div><div class="sub">su 50</div></div>
+      <p id="res-student" style="font-size:15px;font-weight:700;color:#333"></p>
+      <p id="res-class" style="font-size:13px;color:var(--gray)"></p>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-box c"><div class="n" id="cnt-c">0</div><div class="l">Corrette</div></div>
+      <div class="stat-box w"><div class="n" id="cnt-w">0</div><div class="l">Sbagliate</div></div>
+      <div class="stat-box s"><div class="n" id="cnt-s">0</div><div class="l">Saltate</div></div>
+    </div>
+    <button class="dl-btn" onclick="generatePDF()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Scarica PDF per il docente
+    </button>
+    <div class="res-list" id="res-list"></div>
+  </div>
+</div>
+
+<script>
+const DOMAIN='@iiscattaneomilano.edu.it';
+const STORAGE_KEY='test_litt_v2_';
+const TIME_PER_Q=50;
+
+const QUESTIONS_MASTER=[
+  {q:"Chi è l'autore de Il fu Mattia Pascal?",opts:["Italo Svevo","Luigi Pirandello","Alberto Moravia","Cesare Pavese"],ans:1,exp:"Luigi Pirandello è l'autore de Il fu Mattia Pascal (1904), uno dei suoi romanzi più celebri."},
+  {q:"Quale opera è stata scritta da Italo Svevo?",opts:["La coscienza di Zeno","Uno, nessuno e centomila","Il deserto dei Tartari","La luna e i falò"],ans:0,exp:"La coscienza di Zeno (1923) è il capolavoro di Italo Svevo."},
+  {q:"A quale movimento è associato Gabriele D'Annunzio?",opts:["Verismo","Futurismo","Decadentismo","Neorealismo"],ans:2,exp:"D'Annunzio è la figura di spicco del Decadentismo italiano."},
+  {q:"A quale corrente appartiene Filippo Tommaso Marinetti?",opts:["Ermetismo","Futurismo","Realismo","Simbolismo"],ans:1,exp:"Marinetti è il fondatore del Futurismo italiano (Manifesto del 1909)."},
+  {q:"Quale poeta è considerato il 'poeta della prima guerra mondiale'?",opts:["Giuseppe Ungaretti","Giovanni Pascoli","Giosuè Carducci","Gabriele D'Annunzio"],ans:0,exp:"Giuseppe Ungaretti, che combatté sul Carso, è il massimo poeta della Prima Guerra Mondiale."},
+  {q:"Chi è l'autore di Mastro Don Gesualdo?",opts:["Luigi Pirandello","Italo Svevo","Gabriele D'Annunzio","Giovanni Verga"],ans:3,exp:"Mastro Don Gesualdo (1889) è il secondo romanzo del Ciclo dei Vinti di Giovanni Verga."},
+  {q:"A quale corrente è associato Émile Zola?",opts:["Verismo","Naturalismo","Futurismo","Neorealismo"],ans:1,exp:"Émile Zola è il principale esponente del Naturalismo francese, corrente che influenzò il Verismo italiano."},
+  {q:"Chi è il principale esponente del Verismo italiano?",opts:["Giovanni Verga","Luigi Pirandello","Italo Svevo","Gabriele D'Annunzio"],ans:0,exp:"Giovanni Verga è il massimo rappresentante del Verismo italiano, con I Malavoglia e Mastro Don Gesualdo."},
+  {q:"Quale ciclo di opere ha progettato Giovanni Verga?",opts:["I Rougon Macquart","I Romanzi della Rosa","Il Ciclo dei Vinti","Maschere nude"],ans:2,exp:"Verga progettò il Ciclo dei Vinti, di cui completò solo I Malavoglia e Mastro Don Gesualdo."},
+  {q:"Il Verismo italiano si ispira principalmente a quale corrente europea?",opts:["Romanticismo","Simbolismo","Naturalismo","Futurismo"],ans:2,exp:"Il Verismo è la versione italiana del Naturalismo francese, dal quale prende metodo e ispirazione."},
+  {q:"Chi è il principale esponente del Naturalismo francese?",opts:["Victor Hugo","Émile Zola","Gustave Flaubert","Charles Baudelaire"],ans:1,exp:"Émile Zola è il fondatore del Naturalismo francese con il ciclo dei Rougon-Macquart."},
+  {q:"Qual è uno dei principi fondamentali del Verismo?",opts:["Idealizzazione della realtà","Rappresentazione oggettiva della realtà","Centralità del fantastico","Uso del mito"],ans:1,exp:"Il Verismo si fonda sulla rappresentazione oggettiva e impersonale della realtà, senza intervento soggettivo dell'autore."},
+  {q:"Quale tecnica narrativa è tipica di Verga?",opts:["Narratore onnisciente esplicito","Discorso diretto teatrale","Regressione del narratore","Flusso di coscienza"],ans:2,exp:"La regressione del narratore è la tecnica verghiana: il narratore si immedesima nei personaggi, rinunciando a commentare."},
+  {q:"In quale ambiente sono ambientate molte opere di Verga?",opts:["Alta borghesia urbana","Nobiltà rinascimentale","Mondo rurale e popolare","Ambienti fantastici"],ans:2,exp:"Verga ambienta le sue opere nel mondo contadino e peschereccio della Sicilia, ritraendo i ceti più umili."},
+  {q:"Quale opera appartiene al ciclo dei Vinti di Verga?",opts:["I Malavoglia","Il fu Mattia Pascal","Senilità","Il piacere"],ans:0,exp:"I Malavoglia (1881) è il primo romanzo del Ciclo dei Vinti di Giovanni Verga."},
+  {q:"Secondo Zola, lo scrittore deve comportarsi come:",opts:["Un poeta visionario","Uno scienziato sperimentale","Un narratore fantastico","Un moralista religioso"],ans:1,exp:"Zola nel saggio Il romanzo sperimentale (1880) teorizza che il narratore debba agire come uno scienziato che studia la società."},
+  {q:"Qual è un tema centrale del Naturalismo?",opts:["Il libero arbitrio assoluto","Il determinismo sociale e biologico","L'eroismo epico","Il soprannaturale"],ans:1,exp:"Il Naturalismo pone al centro il determinismo: l'individuo è condizionato dall'eredità biologica e dall'ambiente sociale."},
+  {q:"Qual è uno dei temi centrali della poetica di Giovanni Pascoli?",opts:["L'eroismo epico","Il fanciullino e la visione infantile del mondo","La celebrazione della tecnica","Il superuomo"],ans:1,exp:"La poetica del fanciullino è il cuore della visione di Pascoli: il poeta è chi conserva uno sguardo infantile e meravigliato."},
+  {q:"Nella poetica di Gabriele D'Annunzio, il poeta è visto come:",opts:["Un uomo comune","Un osservatore distaccato","Un esteta e vate","Un ribelle sociale"],ans:2,exp:"D'Annunzio si autoproclama vate (poeta-profeta) ed esteta, celebrando la vita come opera d'arte."},
+  {q:"Quale caratteristica distingue la poesia di Giuseppe Ungaretti?",opts:["Uso di versi lunghi e complessi","Linguaggio ricco e barocco","Essenzialità e brevità espressiva","Narrazione epica"],ans:2,exp:"La poesia di Ungaretti è caratterizzata da brevità estrema e parole essenziali, come in M'illumino d'immenso."},
+  {q:"Qual è il ruolo della memoria nella poesia di Umberto Saba?",opts:["È irrilevante","Serve a costruire miti eroici","È uno strumento di introspezione personale","È usata per descrivere la politica"],ans:2,exp:"Per Saba la memoria è strumento di autoanalisi: nel Canzoniere ripercorre la propria vita con sincerità e introspezione."},
+  {q:"La poetica del fanciullino di Pascoli si basa sull'idea che:",opts:["Il poeta debba essere un politico","Dentro ogni uomo viva un bambino capace di stupirsi","La poesia sia razionale","Il linguaggio debba essere complesso"],ans:1,exp:"Pascoli afferma che in ogni uomo viva un fanciullino capace di stupirsi e percepire la poesia nelle cose quotidiane."},
+  {q:"Il concetto di superuomo dannunziano deriva da:",opts:["Marx","Nietzsche","Freud","Kant"],ans:1,exp:"D'Annunzio rielabora il concetto nietzschiano di Uebermensch, adattandolo alla figura dell'esteta e guerriero."},
+  {q:"La poetica di fine Ottocento è segnata da:",opts:["Fiducia nella ragione","Crisi dei valori e ricerca di nuove forme espressive","Stabilità culturale","Ritorno al classicismo puro"],ans:1,exp:"Il fin de siecle è caratterizzato da crisi del Positivismo, relativismo e ricerca di nuovi linguaggi espressivi."},
+  {q:"Il tema della guerra nella poesia di Giuseppe Ungaretti è rappresentato come:",opts:["Glorificazione eroica","Esperienza tragica e personale","Evento lontano e astratto","Occasione politica"],ans:1,exp:"Ungaretti vive la guerra dal fronte e la rappresenta come tragedia umana e dolore personale, non come gloria eroica."},
+  {q:"Il tema dell'identità in Luigi Pirandello è caratterizzato da:",opts:["Stabilità dell'io","Unità interiore","Molteplicità e crisi dell'io","Esaltazione dell'individualismo"],ans:2,exp:"Per Pirandello l'io è frantumato: ognuno ha più maschere e non esiste un'identità autentica e stabile."},
+  {q:"In Italo Svevo, il protagonista è spesso:",opts:["Un eroe vincente","Un inetto incapace di agire","Un politico","Un artista ispirato"],ans:1,exp:"L'inetto è il tipo umano sveviano per eccellenza: individuo paralizzato dall'indecisione, incapace di adattarsi alla società."},
+  {q:"Il tema della memoria in Umberto Saba riguarda:",opts:["Eventi storici globali","Ricordi personali e familiari","Miti classici","Fantascienza"],ans:1,exp:"Il Canzoniere di Saba è una memoria poetica della vita privata: l'infanzia, Trieste, gli amori, la famiglia."},
+  {q:"In Gabriele D'Annunzio, la natura è spesso:",opts:["Ostile e minacciosa","Indifferente","Fonte di piacere sensoriale (panismo)","Irrilevante"],ans:2,exp:"Il panismo dannunziano è la fusione sensoriale e gioiosa dell'uomo con la natura, celebrata nelle Laudi."},
+  {q:"Il tema dell'infanzia in Giovanni Pascoli è legato a:",opts:["Gioco e spensieratezza pura","Visione poetica e conoscitiva","Critica politica","Realismo sociale"],ans:1,exp:"L'infanzia in Pascoli è chiave di accesso a una visione poetica del mondo, libera da razionalità adulta."},
+  {q:"La crisi delle certezze nel primo Novecento porta a:",opts:["Maggiore fiducia nella ragione","Semplificazione della realtà","Smarrimento esistenziale e relativismo","Ritorno al classicismo puro"],ans:2,exp:"Il Novecento si apre con una crisi profonda: relativismo einsteiniano, psicoanalisi freudiana e filosofia nietzschiana."},
+  {q:"Il tema del vero in Giovanni Verga si basa su:",opts:["Idealizzazione della realtà","Rappresentazione oggettiva e impersonale","Fantasia e immaginazione","Visione religiosa"],ans:1,exp:"Verga persegue la rappresentazione del vero come rappresentazione impersonale e oggettiva, senza giudizi morali."},
+  {q:"Nei romanzi di Verga, il destino dei personaggi è spesso:",opts:["Libero e autodeterminato","Segnato da fatalismo e condizioni sociali","Sempre positivo","Eroico"],ans:1,exp:"Il fatalismo è centrale nel Verismo: i personaggi di Verga sono vittime di forze sociali ed economiche che non controllano."},
+  {q:"Il Decadentismo esprime principalmente:",opts:["Fiducia nella scienza","Crisi dei valori e irrazionalismo","Esaltazione della politica","Realismo sociale"],ans:1,exp:"Il Decadentismo nasce come reazione al Positivismo, privilegiando l'irrazionale, il mistero e il simbolo."},
+  {q:"In Gabriele D'Annunzio, il tema dell'estetismo indica:",opts:["Rifiuto dell'arte","Centralità della bellezza e della vita come opera d'arte","Interesse scientifico","Critica sociale"],ans:1,exp:"L'estetismo dannunziano è la concezione della vita come opera d'arte: il bello come valore supremo, superiore alla morale."},
+  {q:"Il tema dello spleen in Charles Baudelaire rappresenta:",opts:["Divertimento quotidiano","Disagio esistenziale","Energia vitale","Entusiasmo patriottico"],ans:1,exp:"Lo spleen baudelairiano è noia, angoscia esistenziale e senso di soffocamento della vita moderna, tema centrale dei Fiori del male."},
+  {q:"In Giovanni Pascoli, la natura è spesso:",opts:["Razionale e scientifica","Misteriosa e simbolica","Solo decorativa","Politica"],ans:1,exp:"Per Pascoli la natura è carica di simboli e misteri, specchio dell'interiorità del poeta e del suo dolore."},
+  {q:"Il Naturalismo francese, legato a Émile Zola, propone:",opts:["Narrazione fantastica","Analisi scientifica della realtà sociale","Idealismo romantico","Poesia lirica"],ans:1,exp:"Zola teorizza nel Romanzo sperimentale che la letteratura debba applicare il metodo scientifico allo studio della società."},
+  {q:"Il tema dell'inetto nella narrativa di fine Ottocento indica:",opts:["Un uomo forte e vincente","Un individuo incapace di adattarsi alla società","Un eroe epico","Una figura mitologica"],ans:1,exp:"L'inetto è già presente in Svevo (Una vita, 1892) e si sviluppa come tipo umano simbolo della crisi borghese novecentesca."},
+  {q:"La figura dell'artista decadente è spesso:",opts:["Integrata nella società","Emarginata e incompresa","Politicamente attiva","Tradizionalista"],ans:1,exp:"L'artista decadente si percepisce come incompreso, alieno dalla società borghese, rifugiandosi nell'arte e nella bellezza."},
+  {q:"La poetica del Verismo di Giovanni Verga si fonda su:",opts:["Centralità dell'autore","Impersonalità e regressione del narratore","Linguaggio aulico","Idealizzazione dei personaggi"],ans:1,exp:"L'impersonalità è il cardine del Verismo verghiano: l'autore scompare e lascia parlare i fatti e i personaggi."},
+  {q:"La tecnica dell'impersonalità in Verga implica:",opts:["Commento morale esplicito","Coinvolgimento emotivo dell'autore","Narrazione oggettiva senza giudizio","Uso della prima persona"],ans:2,exp:"L'impersonalità significa narrare senza intervenire, come se i fatti si raccontassero da soli, adottando il punto di vista dei personaggi."},
+  {q:"La poetica di Gabriele D'Annunzio si caratterizza per:",opts:["Semplicità espressiva","Estetismo e culto della bellezza","Realismo sociale","Linguaggio tecnico"],ans:1,exp:"D'Annunzio è il massimo esponente dell'estetismo italiano, con una scrittura ricchissima al servizio del culto del Bello."},
+  {q:"Il Decadentismo rifiuta:",opts:["L'irrazionale","Il simbolismo","Il positivismo e la fiducia nella scienza","L'arte"],ans:2,exp:"Il Decadentismo si configura come reazione al Positivismo e al razionalismo, privilegiando il sogno, il simbolo, l'inconscio."},
+  {q:"La poetica simbolista, legata a Charles Baudelaire, si basa su:",opts:["Descrizione oggettiva","Uso di simboli e analogie","Narrazione storica","Linguaggio scientifico"],ans:1,exp:"Il Simbolismo usa simboli, analogie e sinestesie per evocare stati d'animo, rifiutando la descrizione letterale."},
+  {q:"La figura del poeta-vate in D'Annunzio implica:",opts:["Distacco dalla società","Guida spirituale ed estetica delle masse","Ironia e distacco","Umiltà"],ans:1,exp:"Il vate è il poeta-profeta che si eleva sugli altri, guida spirituale ed estetica della nazione, come D'Annunzio si autorappresentò."},
+  {q:"Quale raccolta poetica di Ungaretti è legata all'esperienza della Prima Guerra Mondiale?",opts:["Il porto sepolto","Il canzoniere","Ossi di seppia","Alcyone"],ans:0,exp:"Il porto sepolto (1916), poi confluito in L'allegria di naufragi, raccoglie le poesie scritte al fronte sul Carso."},
+  {q:"Quale opera di Pirandello esplora il tema delle maschere sociali attraverso il teatro?",opts:["Sei personaggi in cerca d'autore","I Malavoglia","La coscienza di Zeno","Il piacere"],ans:0,exp:"Sei personaggi in cerca d'autore (1921) è il capolavoro teatrale di Pirandello in cui finzione e realtà si mescolano."},
+  {q:"Cosa si intende con il termine decadentismo in letteratura?",opts:["Ritorno ai valori classici","Movimento che esalta la ragione","Corrente che privilegia irrazionale, simbolo e bellezza malata","Realismo descrittivo della società"],ans:2,exp:"Il Decadentismo privilegia l'irrazionale, il mistero, il simbolo e l'arte per l'arte, in reazione al Positivismo di fine Ottocento."},
+  {q:"Quale romanzo di D'Annunzio è considerato il manifesto dell'estetismo italiano?",opts:["Il fuoco","Notturno","Il piacere","Forse che si forse che no"],ans:2,exp:"Il piacere (1889) è il primo romanzo di D'Annunzio e il manifesto dell'estetismo italiano: Andrea Sperelli vive la vita come opera d'arte."}
+];
+
+function shuffle(arr){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function buildRandomized(){
+  return shuffle(QUESTIONS_MASTER).map(q=>{
+    const order=shuffle([0,1,2,3]);
+    return {q:q.q,opts:order.map(i=>q.opts[i]),ans:order.indexOf(q.ans),exp:q.exp};
+  });
+}
+
+let QUESTIONS=[],student={},answers=[],currentQ=0,timerInterval=null,timeLeft=TIME_PER_Q,answered=false;
+
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('screen-'+id).classList.add('active');window.scrollTo(0,0);}
+
+function doLogin(){
+  const nome=document.getElementById('nome').value.trim();
+  const cognome=document.getElementById('cognome').value.trim();
+  const classe=document.getElementById('classe').value.trim();
+  const local=document.getElementById('email-local').value.trim().toLowerCase();
+  const email=local+DOMAIN;
+  const err=document.getElementById('login-err');
+  err.style.display='none';
+  if(!nome||!cognome||!classe||!local){err.textContent='Compila tutti i campi obbligatori.';err.style.display='block';return;}
+  if(local.includes('@')||local.includes(' ')){err.textContent="Inserisci solo la parte iniziale dell'email (prima della @).";err.style.display='block';return;}
+  if(localStorage.getItem(STORAGE_KEY+email)){err.textContent='Hai gia completato il test con questa email. Il test puo essere effettuato una sola volta.';err.style.display='block';return;}
+  student={nome,cognome,classe,email};
+  QUESTIONS=buildRandomized();
+  answers=new Array(QUESTIONS.length).fill(null);
+  currentQ=0;showScreen('quiz');renderQuestion();
+}
+
+function renderQuestion(){
+  const q=QUESTIONS[currentQ];const L=['A','B','C','D'];
+  document.getElementById('q-num-display').textContent='Domanda '+(currentQ+1)+'/'+QUESTIONS.length;
+  document.getElementById('progress-bar').style.width=((currentQ+1)/QUESTIONS.length*100)+'%';
+  let html='<div class="question-card"><div class="q-text">'+(currentQ+1)+'. '+q.q+'</div>';
+  q.opts.forEach((opt,i)=>{html+='<div class="opt" id="opt-'+i+'" onclick="selectAnswer('+i+')"><div class="opt-letter">'+L[i]+'</div><div class="opt-text">'+opt+'</div></div>';});
+  html+='<div class="feedback" id="feedback"></div></div>';
+  document.getElementById('quiz-body').innerHTML=html;
+  const nb=document.getElementById('nav-btn');
+  nb.textContent=currentQ<QUESTIONS.length-1?'Avanti \u2192':'Termina il Test';
+  nb.disabled=true;answered=false;startTimer();
+}
+
+function startTimer(){
+  clearInterval(timerInterval);timeLeft=TIME_PER_Q;updateTimerUI();
+  timerInterval=setInterval(()=>{timeLeft--;updateTimerUI();if(timeLeft<=0){clearInterval(timerInterval);if(!answered)autoSkip();}},1000);
+}
+function updateTimerUI(){
+  const arc=document.getElementById('timer-arc'),txt=document.getElementById('timer-text');
+  arc.style.strokeDashoffset=(2*Math.PI*20)*(1-timeLeft/TIME_PER_Q);
+  txt.textContent=timeLeft;
+  arc.style.stroke=timeLeft<=10?'#ff6b6b':timeLeft<=20?'#ffd166':'#fff';
+}
+function selectAnswer(idx){
+  if(answered)return;answered=true;clearInterval(timerInterval);
+  answers[currentQ]=idx;const correct=QUESTIONS[currentQ].ans;const L=['A','B','C','D'];
+  for(let i=0;i<4;i++){const el=document.getElementById('opt-'+i);el.style.pointerEvents='none';if(i===correct)el.classList.add('correct');else if(i===idx&&idx!==correct)el.classList.add('wrong');}
+  const fb=document.getElementById('feedback');
+  if(idx===correct){fb.className='feedback correct-fb show';fb.innerHTML='<strong>Corretto!</strong> '+QUESTIONS[currentQ].exp;}
+  else{fb.className='feedback wrong-fb show';fb.innerHTML='<strong>Risposta errata.</strong> La risposta corretta era <strong>'+L[correct]+') '+QUESTIONS[currentQ].opts[correct]+'</strong>. '+QUESTIONS[currentQ].exp;}
+  document.getElementById('nav-btn').disabled=false;
+}
+function autoSkip(){
+  if(answered)return;answered=true;answers[currentQ]=null;
+  const correct=QUESTIONS[currentQ].ans;const L=['A','B','C','D'];
+  for(let i=0;i<4;i++){const el=document.getElementById('opt-'+i);el.style.pointerEvents='none';if(i===correct)el.classList.add('missed');}
+  const fb=document.getElementById('feedback');
+  fb.className='feedback missed-fb show';
+  fb.innerHTML='<strong>Tempo scaduto!</strong> La risposta corretta era <strong>'+L[correct]+') '+QUESTIONS[currentQ].opts[correct]+'</strong>. '+QUESTIONS[currentQ].exp;
+  document.getElementById('nav-btn').disabled=false;
+}
+function nextQuestion(){
+  if(currentQ<QUESTIONS.length-1){currentQ++;renderQuestion();window.scrollTo(0,0);}else{showResults();}
+}
+function showResults(){
+  clearInterval(timerInterval);localStorage.setItem(STORAGE_KEY+student.email,'done');
+  let correct=0,wrong=0,skipped=0;
+  answers.forEach((a,i)=>{if(a===null)skipped++;else if(a===QUESTIONS[i].ans)correct++;else wrong++;});
+  showScreen('results');
+  document.getElementById('res-score').textContent=correct;
+  document.getElementById('res-student').textContent=student.nome+' '+student.cognome;
+  document.getElementById('res-class').textContent='Classe: '+student.classe;
+  document.getElementById('cnt-c').textContent=correct;
+  document.getElementById('cnt-w').textContent=wrong;
+  document.getElementById('cnt-s').textContent=skipped;
+  const L=['A','B','C','D'];let html='';
+  QUESTIONS.forEach((q,i)=>{
+    const a=answers[i];let badge,cls,ansText;
+    if(a===null){badge='Saltata';cls='badge-s';ansText='--';}
+    else if(a===q.ans){badge='Corretta';cls='badge-c';ansText=L[a]+') '+q.opts[a];}
+    else{badge='Sbagliata';cls='badge-w';ansText=L[a]+') '+q.opts[a];}
+    html+='<div class="res-item"><div class="res-q"><span class="res-badge '+cls+'">'+badge+'</span>'+(i+1)+'. '+q.q+'</div><div class="res-ans">Risposta: '+ansText+'</div>'+(a!==q.ans?'<div class="res-correct">Corretta: '+L[q.ans]+') '+q.opts[q.ans]+'</div>':'')+'<div style="font-size:11px;color:#999;margin-top:3px">'+q.exp+'</div></div>';
+  });
+  document.getElementById('res-list').innerHTML=html;
+}
+
+// ────────────────────────────────────────────
+//  PDF  STILE PERGAMENA SCOLASTICA
+// ────────────────────────────────────────────
+function generatePDF(){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  const W=210,H=297,ML=16,MR=16,contentW=W-ML-MR;
+
+  // Palette colori
+  const PARCH   =[252,248,235];
+  const PARCH_MID=[246,238,210];
+  const GOLD    =[160,120,40];
+  const BROWN   =[80,50,20];
+  const BLUE_H  =[30,60,120];
+  const GREEN_OK=[34,110,60];
+  const RED_ERR =[140,30,30];
+  const ORANGE_SK=[160,90,20];
+
+  // Interlinea fissa per evitare sovrapposizioni
+  const LH=5.0;   // altezza riga testo normale
+  const LHs=4.3;  // altezza riga testo piccolo
+
+  let pageNum=0;
+
+  function newPage(isFirst){
+    if(!isFirst){doc.addPage();}
+    pageNum++;
+    // sfondo pergamena
+    doc.setFillColor(...PARCH);doc.rect(0,0,W,H,'F');
+    // bordo doppio
+    doc.setDrawColor(...GOLD);doc.setLineWidth(1.0);doc.rect(7,7,W-14,H-14);
+    doc.setLineWidth(0.35);doc.rect(9.5,9.5,W-19,H-19);
+    // ornamenti angoli
+    const corners=[[12,12],[W-12,12],[12,H-12],[W-12,H-12]];
+    corners.forEach(([cx,cy])=>{
+      doc.setFillColor(...GOLD);
+      doc.circle(cx,cy,1.5,'F');
+    });
+    return pageNum;
+  }
+
+  function drawFooter(){
+    doc.setDrawColor(...GOLD);doc.setLineWidth(0.4);
+    doc.line(ML,H-13,W-MR,H-13);
+    doc.setFont('times','italic');doc.setFontSize(7);doc.setTextColor(...BROWN);
+    doc.text('IIS Cattaneo Milano  \u2014  Sonia Merendino  \u2014  Test di Letteratura Italiana  \u2014  '+new Date().toLocaleDateString('it-IT'),W/2,H-9,{align:'center'});
+    doc.text('Pag. '+pageNum,W-MR,H-9,{align:'right'});
+  }
+
+  // ── PAGINA 1: intestazione ──
+  newPage(true);
+
+  // Fascia titolo
+  let y=15;
+  doc.setFillColor(...PARCH_MID);doc.setDrawColor(...GOLD);doc.setLineWidth(0.6);
+  doc.rect(ML,y,contentW,30,'FD');
+  doc.setFont('times','bold');doc.setFontSize(18);doc.setTextColor(...BLUE_H);
+  doc.text('Test di Letteratura Italiana',W/2,y+11,{align:'center'});
+  doc.setFont('times','italic');doc.setFontSize(10);doc.setTextColor(...BROWN);
+  doc.text('IIS Cattaneo Milano  \u2014  Docente: Sonia Merendino',W/2,y+19,{align:'center'});
+  doc.text('Risultati per il Docente',W/2,y+26,{align:'center'});
+  y+=34;
+
+  // Scheda studente
+  doc.setFillColor(248,243,220);doc.setDrawColor(...GOLD);doc.setLineWidth(0.5);
+  doc.rect(ML,y,contentW,30,'FD');
+  // striscia sinistra
+  doc.setFillColor(...GOLD);doc.rect(ML,y,3,30,'F');
+  doc.setFont('times','bold');doc.setFontSize(9);doc.setTextColor(...BLUE_H);
+  doc.text('Studente:',ML+6,y+7);
+  doc.setFont('times','bolditalic');doc.setFontSize(13);
+  doc.text(student.nome+' '+student.cognome,ML+28,y+7);
+  doc.setFont('times','normal');doc.setFontSize(9);doc.setTextColor(...BROWN);
+  doc.text('Classe: '+student.classe,ML+6,y+14);
+  doc.text('Email:  '+student.email,ML+6,y+20);
+  const dataStr=new Date().toLocaleDateString('it-IT',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  doc.text('Data:   '+dataStr+'  \u2014  Ore: '+new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}),ML+6,y+27);
+  y+=34;
+
+  // Punteggio + statistiche
+  let correct=0,wrong=0,skipped=0;
+  answers.forEach((a,i)=>{if(a===null)skipped++;else if(a===QUESTIONS[i].ans)correct++;else wrong++;});
+
+  // Cerchio punteggio
+  doc.setFillColor(...GOLD);doc.circle(ML+20,y+16,17,'F');
+  doc.setFillColor(248,243,220);doc.circle(ML+20,y+16,14,'F');
+  doc.setFont('times','bold');doc.setFontSize(22);doc.setTextColor(...BLUE_H);
+  doc.text(correct.toString(),ML+20,y+18.5,{align:'center'});
+  doc.setFont('times','normal');doc.setFontSize(8);doc.setTextColor(...BROWN);
+  doc.text('su 50',ML+20,y+24.5,{align:'center'});
+
+  // Box stat accanto
+  const bxW=38,bxH=30,bxStart=ML+42;
+  [[correct,'Corrette',GREEN_OK],[wrong,'Sbagliate',RED_ERR],[skipped,'Saltate',ORANGE_SK]].forEach(([n,lbl,col],k)=>{
+    const bx=bxStart+k*(bxW+3);
+    doc.setFillColor(248,243,220);doc.setDrawColor(...col);doc.setLineWidth(0.7);
+    doc.rect(bx,y+1,bxW,bxH-2,'FD');
+    doc.setFillColor(...col);doc.rect(bx,y+1,bxW,4,'F');
+    doc.setFont('times','bold');doc.setFontSize(7);doc.setTextColor(255,255,255);
+    doc.text(lbl.toUpperCase(),bx+bxW/2,y+4.2,{align:'center'});
+    doc.setFont('times','bold');doc.setFontSize(22);doc.setTextColor(...col);
+    doc.text(n.toString(),bx+bxW/2,y+20,{align:'center'});
+  });
+  y+=34;
+
+  // linea separatore
+  doc.setDrawColor(...GOLD);doc.setLineWidth(0.7);
+  doc.line(ML,y,W-MR,y);
+  y+=5;
+
+  // titolo sezione dettaglio
+  doc.setFont('times','bold');doc.setFontSize(9);doc.setTextColor(...BROWN);
+  doc.text('Dettaglio delle risposte',W/2,y,{align:'center'});
+  y+=6;
+
+  drawFooter();
+
+  // ── DOMANDE ──
+  const L=['A','B','C','D'];
+  const BOTTOM_LIMIT=H-16;
+
+  QUESTIONS.forEach((q,i)=>{
+    const a=answers[i];
+    let status,bgC,bordC,lblC;
+    if(a===null){status='SALTATA';bgC=[255,251,235];bordC=ORANGE_SK;lblC=ORANGE_SK;}
+    else if(a===q.ans){status='CORRETTA';bgC=[236,252,240];bordC=GREEN_OK;lblC=GREEN_OK;}
+    else{status='SBAGLIATA';bgC=[252,236,236];bordC=RED_ERR;lblC=RED_ERR;}
+
+    // prepara testi (usa font times/bold per calcolo corretto)
+    doc.setFont('times','bold');doc.setFontSize(9);
+    const qLines=doc.splitTextToSize((i+1)+'. '+q.q,contentW-10);
+
+    doc.setFont('times','normal');doc.setFontSize(8);
+    let ansLines=[];
+    if(a!==null) ansLines=doc.splitTextToSize('Risposta data: '+L[a]+') '+q.opts[a],contentW-10);
+
+    let corrLines=[];
+    if(a!==q.ans) corrLines=doc.splitTextToSize('Risposta corretta: '+L[q.ans]+') '+q.opts[q.ans],contentW-10);
+
+    doc.setFont('times','italic');doc.setFontSize(7.5);
+    const expLines=doc.splitTextToSize('Spiegazione: '+q.exp,contentW-10);
+
+    // calcola altezza blocco esattamente
+    const PAD_TOP=4, PAD_BOT=4;
+    let blockH=PAD_TOP;
+    blockH+=qLines.length*LH;
+    if(ansLines.length>0){blockH+=2+ansLines.length*LHs;}
+    if(corrLines.length>0){blockH+=2+corrLines.length*LHs;}
+    blockH+=2+expLines.length*LHs;
+    blockH+=PAD_BOT;
+
+    // nuova pagina se non c'è spazio
+    if(y+blockH>BOTTOM_LIMIT){
+      newPage(false);
+      // mini header
+      doc.setFillColor(...PARCH_MID);doc.setDrawColor(...GOLD);doc.setLineWidth(0.4);
+      doc.rect(ML,13,contentW,8,'FD');
+      doc.setFont('times','italic');doc.setFontSize(8);doc.setTextColor(...BROWN);
+      doc.text('Test di Letteratura  \u2014  '+student.nome+' '+student.cognome+'  \u2014  Classe '+student.classe,ML+3,18.5);
+      doc.text('Pag. '+pageNum,W-MR-3,18.5,{align:'right'});
+      y=25;
+      drawFooter();
+    }
+
+    // disegna blocco
+    doc.setFillColor(...bgC);doc.setDrawColor(...bordC);doc.setLineWidth(0.45);
+    doc.rect(ML,y,contentW,blockH,'FD');
+    // striscia sinistra
+    doc.setFillColor(...bordC);doc.rect(ML,y,2.5,blockH,'F');
+
+    // badge status (in alto a destra)
+    doc.setFillColor(...bordC);
+    doc.rect(W-MR-18,y+1.5,16,5,'F');
+    doc.setFont('times','bold');doc.setFontSize(6.5);doc.setTextColor(255,255,255);
+    doc.text(status,W-MR-10,y+5,{align:'center'});
+
+    // testo domanda
+    let ly=y+PAD_TOP+LH*0.7;
+    doc.setFont('times','bold');doc.setFontSize(9);doc.setTextColor(...BROWN);
+    doc.text(qLines,ML+5,ly);
+    ly+=qLines.length*LH;
+
+    // risposta data
+    if(ansLines.length>0){
+      ly+=2;
+      doc.setFont('times','normal');doc.setFontSize(8);doc.setTextColor(90,60,20);
+      doc.text(ansLines,ML+5,ly);
+      ly+=ansLines.length*LHs;
+    }
+    // risposta corretta
+    if(corrLines.length>0){
+      ly+=2;
+      doc.setFont('times','bold');doc.setFontSize(8);doc.setTextColor(...GREEN_OK);
+      doc.text(corrLines,ML+5,ly);
+      ly+=corrLines.length*LHs;
+    }
+    // spiegazione
+    ly+=2;
+    doc.setFont('times','italic');doc.setFontSize(7.5);doc.setTextColor(110,80,30);
+    doc.text(expLines,ML+5,ly);
+
+    y+=blockH+3;
+  });
+
+  doc.save('Test_Letteratura_'+student.cognome+'_'+student.nome+'_'+student.classe+'.pdf');
+}
+</script>
+</body>
+</html>
