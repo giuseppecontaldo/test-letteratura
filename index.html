@@ -13,6 +13,8 @@
   --border:#dee2e6;--radius:12px;--shadow:0 2px 16px rgba(0,0,0,.10);
 }
 html,body{height:100%;overscroll-behavior:none}
+body{-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;}
+input[type=text]{-webkit-user-select:text;-moz-user-select:text;user-select:text;}
 body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f0f4f8;min-height:100vh;color:#222;font-size:16px;-webkit-font-smoothing:antialiased}
 .screen{display:none;min-height:100vh}
 .screen.active{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:20px 14px 48px}
@@ -44,19 +46,17 @@ input[type=text]:focus{outline:none;border-color:var(--primary)}
 .question-card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);margin:14px;padding:20px 16px}
 .q-text{font-size:15px;font-weight:600;line-height:1.55;margin-bottom:16px;color:#1a1a2e}
 .opt{display:flex;align-items:center;gap:11px;padding:13px;border:1.5px solid var(--border);border-radius:10px;margin-bottom:9px;cursor:pointer;transition:background .12s,border-color .15s;min-height:52px;-webkit-user-select:none;user-select:none}
-.opt:active{background:var(--primary-light)}
-.opt.correct{background:#e8faf0;border-color:var(--success)!important}
-.opt.wrong{background:#fdf0ef;border-color:var(--accent)!important}
+.opt:active{background:#e9e9e9}
+.opt.selected{background:#e0e0e0;border-color:#999!important}
+.opt.selected .opt-letter{background:#666}
 .opt.missed{background:#fff8ec;border-color:var(--warning)!important}
-.opt-letter{width:30px;height:30px;border-radius:50%;background:var(--primary);color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.opt.correct .opt-letter{background:var(--success)}
-.opt.wrong .opt-letter{background:var(--accent)}
 .opt.missed .opt-letter{background:var(--warning)}
+.opt-letter{width:30px;height:30px;border-radius:50%;background:var(--primary);color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .opt-text{font-size:14px;line-height:1.4;flex:1}
+.opt.locked{cursor:default;}
 .feedback{font-size:13px;margin-top:11px;padding:10px 12px;border-radius:7px;display:none;line-height:1.6}
 .feedback.show{display:block}
-.feedback.correct-fb{background:#e8faf0;color:#155724;border-left:3px solid var(--success)}
-.feedback.wrong-fb{background:#fdf0ef;color:#721c24;border-left:3px solid var(--accent)}
+.feedback.sel-fb{background:#f0f0f0;color:#444;border-left:3px solid #999}
 .feedback.missed-fb{background:#fff8ec;color:#856404;border-left:3px solid var(--warning)}
 .nav-btn{display:block;width:calc(100% - 28px);margin:0 14px 8px;padding:16px;border:none;border-radius:10px;font-size:17px;font-weight:700;cursor:pointer;background:var(--primary);color:#fff;-webkit-appearance:none}
 .nav-btn:disabled{opacity:.35;cursor:default}
@@ -92,7 +92,7 @@ input[type=text]:focus{outline:none;border-color:var(--primary)}
 }
 </style>
 </head>
-<body>
+<body oncontextmenu="return false" onselectstart="return false" oncopy="return false" oncut="return false">
 
 <!-- LOGIN -->
 <div id="screen-login" class="screen active">
@@ -223,7 +223,7 @@ function buildRandomized(){
   });
 }
 
-let QUESTIONS=[],student={},answers=[],currentQ=0,timerInterval=null,timeLeft=TIME_PER_Q,answered=false;
+let QUESTIONS=[],student={},answers=[],currentQ=0,timerInterval=null,timeLeft=TIME_PER_Q,answered=false,_startTime=null;
 
 function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('screen-'+id).classList.add('active');window.scrollTo(0,0);}
 
@@ -241,7 +241,7 @@ function doLogin(){
   student={nome,cognome,classe,email};
   QUESTIONS=buildRandomized();
   answers=new Array(QUESTIONS.length).fill(null);
-  currentQ=0;showScreen('quiz');renderQuestion();
+  currentQ=0;_startTime=new Date();showScreen('quiz');renderQuestion();
 }
 
 function renderQuestion(){
@@ -259,7 +259,7 @@ function renderQuestion(){
 
 function startTimer(){
   clearInterval(timerInterval);timeLeft=TIME_PER_Q;updateTimerUI();
-  timerInterval=setInterval(()=>{timeLeft--;updateTimerUI();if(timeLeft<=0){clearInterval(timerInterval);if(!answered)autoSkip();}},1000);
+  timerInterval=setInterval(()=>{timeLeft--;updateTimerUI();if(timeLeft<=0){clearInterval(timerInterval);autoSkip();}},1000);
 }
 function updateTimerUI(){
   const arc=document.getElementById('timer-arc'),txt=document.getElementById('timer-text');
@@ -268,24 +268,49 @@ function updateTimerUI(){
   arc.style.stroke=timeLeft<=10?'#ff6b6b':timeLeft<=20?'#ffd166':'#fff';
 }
 function selectAnswer(idx){
-  if(answered)return;answered=true;clearInterval(timerInterval);
-  answers[currentQ]=idx;const correct=QUESTIONS[currentQ].ans;const L=['A','B','C','D'];
-  for(let i=0;i<4;i++){const el=document.getElementById('opt-'+i);el.style.pointerEvents='none';if(i===correct)el.classList.add('correct');else if(i===idx&&idx!==correct)el.classList.add('wrong');}
+  if(answered)return; // timer scaduto, locked
+  // Rimuovi selezione precedente
+  for(let i=0;i<4;i++){
+    const el=document.getElementById('opt-'+i);
+    if(el){el.classList.remove('selected');}
+  }
+  // Segna la nuova selezione in grigio
+  const chosen=document.getElementById('opt-'+idx);
+  if(chosen)chosen.classList.add('selected');
+  // Salva risposta (sovrascrive quella precedente)
+  answers[currentQ]=idx;
+  // Mostra feedback neutro
   const fb=document.getElementById('feedback');
-  if(idx===correct){fb.className='feedback correct-fb show';fb.innerHTML='<strong>Corretto!</strong> '+QUESTIONS[currentQ].exp;}
-  else{fb.className='feedback wrong-fb show';fb.innerHTML='<strong>Risposta errata.</strong> La risposta corretta era <strong>'+L[correct]+') '+QUESTIONS[currentQ].opts[correct]+'</strong>. '+QUESTIONS[currentQ].exp;}
+  fb.className='feedback sel-fb show';
+  fb.innerHTML='Risposta selezionata. Puoi cambiarla finché il tempo non scade.';
+  // Abilita il tasto Avanti
   document.getElementById('nav-btn').disabled=false;
 }
+function lockQuestion(){
+  // Chiamata allo scadere del timer o al click su Avanti: blocca tutto
+  answered=true;
+  clearInterval(timerInterval);
+  for(let i=0;i<4;i++){
+    const el=document.getElementById('opt-'+i);
+    if(el){el.onclick=null;el.style.pointerEvents='none';el.classList.add('locked');}
+  }
+  const fb=document.getElementById('feedback');
+  if(answers[currentQ]!==null){
+    fb.className='feedback sel-fb show';
+    fb.innerHTML='Risposta registrata.';
+  }
+}
 function autoSkip(){
-  if(answered)return;answered=true;answers[currentQ]=null;
-  const correct=QUESTIONS[currentQ].ans;const L=['A','B','C','D'];
-  for(let i=0;i<4;i++){const el=document.getElementById('opt-'+i);el.style.pointerEvents='none';if(i===correct)el.classList.add('missed');}
+  if(answered)return;
+  lockQuestion();
+  answers[currentQ]=null; // nessuna risposta
   const fb=document.getElementById('feedback');
   fb.className='feedback missed-fb show';
-  fb.innerHTML='<strong>Tempo scaduto!</strong> La risposta corretta era <strong>'+L[correct]+') '+QUESTIONS[currentQ].opts[correct]+'</strong>. '+QUESTIONS[currentQ].exp;
+  fb.innerHTML='<strong>Tempo scaduto.</strong> Nessuna risposta registrata.';
   document.getElementById('nav-btn').disabled=false;
 }
 function nextQuestion(){
+  lockQuestion();
   if(currentQ<QUESTIONS.length-1){currentQ++;renderQuestion();window.scrollTo(0,0);}else{showResults();}
 }
 function showResults(){
@@ -305,211 +330,222 @@ function showResults(){
     if(a===null){badge='Saltata';cls='badge-s';ansText='--';}
     else if(a===q.ans){badge='Corretta';cls='badge-c';ansText=L[a]+') '+q.opts[a];}
     else{badge='Sbagliata';cls='badge-w';ansText=L[a]+') '+q.opts[a];}
-    html+='<div class="res-item"><div class="res-q"><span class="res-badge '+cls+'">'+badge+'</span>'+(i+1)+'. '+q.q+'</div><div class="res-ans">Risposta: '+ansText+'</div>'+(a!==q.ans?'<div class="res-correct">Corretta: '+L[q.ans]+') '+q.opts[q.ans]+'</div>':'')+'<div style="font-size:11px;color:#999;margin-top:3px">'+q.exp+'</div></div>';
+    html+='<div class="res-item"><div class="res-q"><span class="res-badge '+cls+'">'+badge+'</span>'+(i+1)+'. '+q.q+'</div><div class="res-ans">Risposta: '+ansText+'</div>'+(a!==q.ans?'<div class="res-correct">Corretta: '+L[q.ans]+') '+q.opts[q.ans]+'</div>':'')+'</div>';
   });
   document.getElementById('res-list').innerHTML=html;
 }
 
-// ────────────────────────────────────────────
-//  PDF  STILE PERGAMENA SCOLASTICA
-// ────────────────────────────────────────────
+// ─────────────────────────────────────────────────────
+//  PDF — STILE PULITO, LEGGIBILITA' BES
+// ─────────────────────────────────────────────────────
 function generatePDF(){
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({unit:'mm',format:'a4'});
-  const W=210,H=297,ML=16,MR=16,contentW=W-ML-MR;
+  const W=210,H=297,ML=18,MR=18,contentW=W-ML-MR;
 
-  // Palette colori
-  const PARCH   =[252,248,235];
-  const PARCH_MID=[246,238,210];
-  const GOLD    =[160,120,40];
-  const BROWN   =[80,50,20];
-  const BLUE_H  =[30,60,120];
-  const GREEN_OK=[34,110,60];
-  const RED_ERR =[140,30,30];
-  const ORANGE_SK=[160,90,20];
+  // Palette BES: alto contrasto, niente texture, colori netti
+  const WHITE  =[255,255,255];
+  const BG     =[250,251,253];
+  const NAVY   =[25,55,110];
+  const DARK   =[25,25,30];
+  const MID    =[95,95,105];
+  const LGRAY  =[215,218,226];
+  const GREEN_B=[0,115,65];
+  const GREEN_L=[228,248,236];
+  const RED_B  =[165,20,20];
+  const RED_L  =[252,232,232];
+  const ORG_B  =[165,95,0];
+  const ORG_L  =[255,244,220];
 
-  // Interlinea fissa per evitare sovrapposizioni
-  const LH=5.0;   // altezza riga testo normale
-  const LHs=4.3;  // altezza riga testo piccolo
+  // Interlinea generosa per BES
+  const LH=6.0, LHs=5.2, LHe=4.8;
 
-  let pageNum=0;
+  // Calcolo tempo di completamento
+  const elapsed=Math.round((new Date()-_startTime)/1000);
+  const mm=Math.floor(elapsed/60).toString().padStart(2,'0');
+  const ss=(elapsed%60).toString().padStart(2,'0');
+  const tempoStr=mm+' min '+ss+' sec';
 
-  function newPage(isFirst){
-    if(!isFirst){doc.addPage();}
-    pageNum++;
-    // sfondo pergamena
-    doc.setFillColor(...PARCH);doc.rect(0,0,W,H,'F');
-    // bordo doppio
-    doc.setDrawColor(...GOLD);doc.setLineWidth(1.0);doc.rect(7,7,W-14,H-14);
-    doc.setLineWidth(0.35);doc.rect(9.5,9.5,W-19,H-19);
-    // ornamenti angoli
-    const corners=[[12,12],[W-12,12],[12,H-12],[W-12,H-12]];
-    corners.forEach(([cx,cy])=>{
-      doc.setFillColor(...GOLD);
-      doc.circle(cx,cy,1.5,'F');
-    });
-    return pageNum;
-  }
-
-  function drawFooter(){
-    doc.setDrawColor(...GOLD);doc.setLineWidth(0.4);
-    doc.line(ML,H-13,W-MR,H-13);
-    doc.setFont('times','italic');doc.setFontSize(7);doc.setTextColor(...BROWN);
-    doc.text('IIS Cattaneo Milano  \u2014  Sonia Merendino  \u2014  Test di Letteratura Italiana  \u2014  '+new Date().toLocaleDateString('it-IT'),W/2,H-9,{align:'center'});
-    doc.text('Pag. '+pageNum,W-MR,H-9,{align:'right'});
-  }
-
-  // ── PAGINA 1: intestazione ──
-  newPage(true);
-
-  // Fascia titolo
-  let y=15;
-  doc.setFillColor(...PARCH_MID);doc.setDrawColor(...GOLD);doc.setLineWidth(0.6);
-  doc.rect(ML,y,contentW,30,'FD');
-  doc.setFont('times','bold');doc.setFontSize(18);doc.setTextColor(...BLUE_H);
-  doc.text('Test di Letteratura Italiana',W/2,y+11,{align:'center'});
-  doc.setFont('times','italic');doc.setFontSize(10);doc.setTextColor(...BROWN);
-  doc.text('IIS Cattaneo Milano  \u2014  Docente: Sonia Merendino',W/2,y+19,{align:'center'});
-  doc.text('Risultati per il Docente',W/2,y+26,{align:'center'});
-  y+=34;
-
-  // Scheda studente
-  doc.setFillColor(248,243,220);doc.setDrawColor(...GOLD);doc.setLineWidth(0.5);
-  doc.rect(ML,y,contentW,30,'FD');
-  // striscia sinistra
-  doc.setFillColor(...GOLD);doc.rect(ML,y,3,30,'F');
-  doc.setFont('times','bold');doc.setFontSize(9);doc.setTextColor(...BLUE_H);
-  doc.text('Studente:',ML+6,y+7);
-  doc.setFont('times','bolditalic');doc.setFontSize(13);
-  doc.text(student.nome+' '+student.cognome,ML+28,y+7);
-  doc.setFont('times','normal');doc.setFontSize(9);doc.setTextColor(...BROWN);
-  doc.text('Classe: '+student.classe,ML+6,y+14);
-  doc.text('Email:  '+student.email,ML+6,y+20);
-  const dataStr=new Date().toLocaleDateString('it-IT',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
-  doc.text('Data:   '+dataStr+'  \u2014  Ore: '+new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}),ML+6,y+27);
-  y+=34;
-
-  // Punteggio + statistiche
+  // Voto in decimi (0 corrette = 1; 50 corrette = 10)
   let correct=0,wrong=0,skipped=0;
   answers.forEach((a,i)=>{if(a===null)skipped++;else if(a===QUESTIONS[i].ans)correct++;else wrong++;});
+  const voto=Math.round((1+correct/50*9)*10)/10;
+  const votoStr=voto.toFixed(1).replace('.',',')+' / 10';
 
-  // Cerchio punteggio
-  doc.setFillColor(...GOLD);doc.circle(ML+20,y+16,17,'F');
-  doc.setFillColor(248,243,220);doc.circle(ML+20,y+16,14,'F');
-  doc.setFont('times','bold');doc.setFontSize(22);doc.setTextColor(...BLUE_H);
-  doc.text(correct.toString(),ML+20,y+18.5,{align:'center'});
-  doc.setFont('times','normal');doc.setFontSize(8);doc.setTextColor(...BROWN);
-  doc.text('su 50',ML+20,y+24.5,{align:'center'});
+  const L=['A','B','C','D'];
+  let pageNum=0;
+  const BOTTOM=H-18;
 
-  // Box stat accanto
-  const bxW=38,bxH=30,bxStart=ML+42;
-  [[correct,'Corrette',GREEN_OK],[wrong,'Sbagliate',RED_ERR],[skipped,'Saltate',ORANGE_SK]].forEach(([n,lbl,col],k)=>{
-    const bx=bxStart+k*(bxW+3);
-    doc.setFillColor(248,243,220);doc.setDrawColor(...col);doc.setLineWidth(0.7);
-    doc.rect(bx,y+1,bxW,bxH-2,'FD');
-    doc.setFillColor(...col);doc.rect(bx,y+1,bxW,4,'F');
-    doc.setFont('times','bold');doc.setFontSize(7);doc.setTextColor(255,255,255);
-    doc.text(lbl.toUpperCase(),bx+bxW/2,y+4.2,{align:'center'});
-    doc.setFont('times','bold');doc.setFontSize(22);doc.setTextColor(...col);
-    doc.text(n.toString(),bx+bxW/2,y+20,{align:'center'});
+  function drawBase(){
+    doc.setFillColor(...BG);doc.rect(0,0,W,H,'F');
+    doc.setFillColor(...NAVY);doc.rect(0,0,W,2.5,'F');
+    doc.setFillColor(...LGRAY);doc.rect(0,H-2.5,W,2.5,'F');
+  }
+  function drawFooter(){
+    doc.setDrawColor(...LGRAY);doc.setLineWidth(0.3);doc.line(ML,H-11,W-MR,H-11);
+    doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...MID);
+    doc.text('IIS Cattaneo Milano  —  Sonia Merendino  —  Test di Letteratura Italiana',ML,H-6.5);
+    doc.text('Pag. '+pageNum,W-MR,H-6.5,{align:'right'});
+  }
+  function newPage(first){
+    if(!first)doc.addPage();
+    pageNum++;drawBase();drawFooter();
+  }
+
+  // ── PAGINA 1 ──
+  newPage(true);
+  let y=8;
+
+  // Fascia titolo navy
+  doc.setFillColor(...NAVY);doc.rect(ML,y,contentW,22,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(15);doc.setTextColor(...WHITE);
+  doc.text('Test di Letteratura Italiana',ML+5,y+9);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);
+  doc.text('IIS Cattaneo Milano  —  Docente: Sonia Merendino  —  Risultati per il Docente',ML+5,y+17);
+  y+=26;
+
+  // Scheda studente
+  doc.setFillColor(...WHITE);doc.setDrawColor(...NAVY);doc.setLineWidth(0.6);
+  doc.rect(ML,y,contentW,36,'FD');
+  doc.setFillColor(...NAVY);doc.rect(ML,y,5,36,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(...NAVY);
+  doc.text(student.nome+' '+student.cognome,ML+9,y+9);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...DARK);
+  doc.text('Classe:   '+student.classe,ML+9,y+17);
+  doc.text('Email:    '+student.email,ML+9,y+24);
+  const dataStr=new Date().toLocaleDateString('it-IT',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  doc.text('Data:     '+dataStr+'   —   Ore: '+new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}),ML+9,y+31);
+  doc.text('Durata:   '+tempoStr,ML+9,y+35.5);
+  y+=40;
+
+  // ── Riquadro punteggio / voto / tempo ──
+  const rH=34;
+  const col1W=contentW*0.33, col2W=contentW*0.34, col3W=contentW-col1W-col2W;
+  // colonna 1: punteggio
+  doc.setFillColor(...NAVY);doc.rect(ML,y,col1W,rH,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(26);doc.setTextColor(...WHITE);
+  doc.text(correct+' / 50',ML+col1W/2,y+16,{align:'center'});
+  doc.setFont('helvetica','normal');doc.setFontSize(8);
+  doc.text('punteggio',ML+col1W/2,y+23,{align:'center'});
+  // colonna 2: voto
+  doc.setFillColor(...WHITE);doc.setDrawColor(...NAVY);doc.setLineWidth(0.5);
+  doc.rect(ML+col1W,y,col2W,rH,'FD');
+  doc.setFont('helvetica','bold');doc.setFontSize(22);doc.setTextColor(...NAVY);
+  doc.text(votoStr,ML+col1W+col2W/2,y+16,{align:'center'});
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...MID);
+  doc.text('voto in decimi',ML+col1W+col2W/2,y+23,{align:'center'});
+  // colonna 3: tempo
+  doc.setFillColor(...WHITE);doc.setDrawColor(...LGRAY);doc.setLineWidth(0.4);
+  doc.rect(ML+col1W+col2W,y,col3W,rH,'FD');
+  doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(...DARK);
+  doc.text(tempoStr,ML+col1W+col2W+col3W/2,y+16,{align:'center'});
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...MID);
+  doc.text('tempo completamento',ML+col1W+col2W+col3W/2,y+23,{align:'center'});
+  y+=rH+5;
+
+  // ── Tabella statistiche ──
+  const stW=(contentW-6)/3;
+  [[correct,'Risposte corrette',GREEN_B,GREEN_L],
+   [wrong,'Risposte sbagliate',RED_B,RED_L],
+   [skipped,'Domande saltate',ORG_B,ORG_L]].forEach(([n,lbl,bc,bl],k)=>{
+    const bx=ML+k*(stW+3);
+    doc.setFillColor(...bl);doc.setDrawColor(...bc);doc.setLineWidth(0.5);
+    doc.rect(bx,y,stW,15,'FD');
+    doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(...bc);
+    doc.text(n.toString(),bx+stW/2,y+9,{align:'center'});
+    doc.setFont('helvetica','normal');doc.setFontSize(7.5);
+    doc.text(lbl,bx+stW/2,y+13.5,{align:'center'});
   });
-  y+=34;
+  y+=21;
 
-  // linea separatore
-  doc.setDrawColor(...GOLD);doc.setLineWidth(0.7);
-  doc.line(ML,y,W-MR,y);
-  y+=5;
-
-  // titolo sezione dettaglio
-  doc.setFont('times','bold');doc.setFontSize(9);doc.setTextColor(...BROWN);
-  doc.text('Dettaglio delle risposte',W/2,y,{align:'center'});
-  y+=6;
-
-  drawFooter();
+  // Titolo sezione
+  doc.setDrawColor(...LGRAY);doc.setLineWidth(0.35);doc.line(ML,y,W-MR,y);
+  y+=4;
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...NAVY);
+  doc.text('DETTAGLIO RISPOSTE',ML,y);
+  y+=7;
 
   // ── DOMANDE ──
-  const L=['A','B','C','D'];
-  const BOTTOM_LIMIT=H-16;
-
   QUESTIONS.forEach((q,i)=>{
     const a=answers[i];
-    let status,bgC,bordC,lblC;
-    if(a===null){status='SALTATA';bgC=[255,251,235];bordC=ORANGE_SK;lblC=ORANGE_SK;}
-    else if(a===q.ans){status='CORRETTA';bgC=[236,252,240];bordC=GREEN_OK;lblC=GREEN_OK;}
-    else{status='SBAGLIATA';bgC=[252,236,236];bordC=RED_ERR;lblC=RED_ERR;}
+    let status,bgC,bordC;
+    if(a===null){status='SALTATA';bgC=ORG_L;bordC=ORG_B;}
+    else if(a===q.ans){status='CORRETTA';bgC=GREEN_L;bordC=GREEN_B;}
+    else{status='SBAGLIATA';bgC=RED_L;bordC=RED_B;}
 
-    // prepara testi (usa font times/bold per calcolo corretto)
-    doc.setFont('times','bold');doc.setFontSize(9);
-    const qLines=doc.splitTextToSize((i+1)+'. '+q.q,contentW-10);
-
-    doc.setFont('times','normal');doc.setFontSize(8);
+    // pre-calcola righe con font corretto
+    doc.setFont('helvetica','bold');doc.setFontSize(9.5);
+    const qLines=doc.splitTextToSize((i+1)+'.  '+q.q,contentW-20);
+    doc.setFont('helvetica','normal');doc.setFontSize(9);
     let ansLines=[];
-    if(a!==null) ansLines=doc.splitTextToSize('Risposta data: '+L[a]+') '+q.opts[a],contentW-10);
-
+    if(a!==null) ansLines=doc.splitTextToSize('Risposta data:     '+L[a]+')  '+q.opts[a],contentW-20);
+    doc.setFont('helvetica','bold');doc.setFontSize(9);
     let corrLines=[];
-    if(a!==q.ans) corrLines=doc.splitTextToSize('Risposta corretta: '+L[q.ans]+') '+q.opts[q.ans],contentW-10);
+    if(a!==q.ans) corrLines=doc.splitTextToSize('Risposta corretta: '+L[q.ans]+')  '+q.opts[q.ans],contentW-20);
+    doc.setFont('helvetica','italic');doc.setFontSize(8.5);
+    let expLines=[];
+    if(a!==q.ans) expLines=doc.splitTextToSize('Spiegazione: '+q.exp,contentW-20);
 
-    doc.setFont('times','italic');doc.setFontSize(7.5);
-    const expLines=doc.splitTextToSize('Spiegazione: '+q.exp,contentW-10);
+    const PAD=5;
+    let blockH=PAD+qLines.length*LH;
+    if(ansLines.length>0) blockH+=LHs*0.6+ansLines.length*LHs;
+    if(corrLines.length>0) blockH+=LHs*0.6+corrLines.length*LHs;
+    if(expLines.length>0) blockH+=LHe*0.6+expLines.length*LHe;
+    blockH+=PAD;
 
-    // calcola altezza blocco esattamente
-    const PAD_TOP=4, PAD_BOT=4;
-    let blockH=PAD_TOP;
-    blockH+=qLines.length*LH;
-    if(ansLines.length>0){blockH+=2+ansLines.length*LHs;}
-    if(corrLines.length>0){blockH+=2+corrLines.length*LHs;}
-    blockH+=2+expLines.length*LHs;
-    blockH+=PAD_BOT;
-
-    // nuova pagina se non c'è spazio
-    if(y+blockH>BOTTOM_LIMIT){
+    if(y+blockH>BOTTOM){
       newPage(false);
-      // mini header
-      doc.setFillColor(...PARCH_MID);doc.setDrawColor(...GOLD);doc.setLineWidth(0.4);
-      doc.rect(ML,13,contentW,8,'FD');
-      doc.setFont('times','italic');doc.setFontSize(8);doc.setTextColor(...BROWN);
-      doc.text('Test di Letteratura  \u2014  '+student.nome+' '+student.cognome+'  \u2014  Classe '+student.classe,ML+3,18.5);
-      doc.text('Pag. '+pageNum,W-MR-3,18.5,{align:'right'});
-      y=25;
-      drawFooter();
+      doc.setFillColor(...NAVY);doc.rect(ML,8,contentW,10,'F');
+      doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...WHITE);
+      doc.text(student.nome+' '+student.cognome+'  —  Classe '+student.classe+'  —  Letteratura Italiana',ML+4,14.5);
+      y=22;
     }
 
-    // disegna blocco
-    doc.setFillColor(...bgC);doc.setDrawColor(...bordC);doc.setLineWidth(0.45);
+    // Blocco bianco con bordo colorato
+    doc.setFillColor(...WHITE);doc.setDrawColor(...bordC);doc.setLineWidth(0.5);
     doc.rect(ML,y,contentW,blockH,'FD');
-    // striscia sinistra
-    doc.setFillColor(...bordC);doc.rect(ML,y,2.5,blockH,'F');
+    // Barra laterale colorata (7mm)
+    doc.setFillColor(...bgC);doc.rect(ML,y,7,blockH,'F');
+    doc.setDrawColor(...bordC);doc.setLineWidth(0.4);
+    doc.line(ML+7,y,ML+7,y+blockH);
+    // Numero nel tab
+    doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(...bordC);
+    doc.text((i+1).toString(),ML+3.5,y+PAD+2.5,{align:'center'});
 
-    // badge status (in alto a destra)
+    // Badge status (pill arrotondato)
+    const bW=24,bH=5.5;
     doc.setFillColor(...bordC);
-    doc.rect(W-MR-18,y+1.5,16,5,'F');
-    doc.setFont('times','bold');doc.setFontSize(6.5);doc.setTextColor(255,255,255);
-    doc.text(status,W-MR-10,y+5,{align:'center'});
+    doc.roundedRect(W-MR-bW-1,y+2,bW,bH,2,2,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(...WHITE);
+    doc.text(status,W-MR-bW/2-1,y+6,{align:'center'});
 
-    // testo domanda
-    let ly=y+PAD_TOP+LH*0.7;
-    doc.setFont('times','bold');doc.setFontSize(9);doc.setTextColor(...BROWN);
-    doc.text(qLines,ML+5,ly);
+    let ly=y+PAD+LH*0.85;
+
+    // Domanda
+    doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(...DARK);
+    doc.text(qLines,ML+10,ly);
     ly+=qLines.length*LH;
 
-    // risposta data
+    // Risposta data
     if(ansLines.length>0){
-      ly+=2;
-      doc.setFont('times','normal');doc.setFontSize(8);doc.setTextColor(90,60,20);
-      doc.text(ansLines,ML+5,ly);
+      ly+=LHs*0.6;
+      doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...MID);
+      doc.text(ansLines,ML+10,ly);
       ly+=ansLines.length*LHs;
     }
-    // risposta corretta
+    // Risposta corretta
     if(corrLines.length>0){
-      ly+=2;
-      doc.setFont('times','bold');doc.setFontSize(8);doc.setTextColor(...GREEN_OK);
-      doc.text(corrLines,ML+5,ly);
+      ly+=LHs*0.6;
+      doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...GREEN_B);
+      doc.text(corrLines,ML+10,ly);
       ly+=corrLines.length*LHs;
     }
-    // spiegazione
-    ly+=2;
-    doc.setFont('times','italic');doc.setFontSize(7.5);doc.setTextColor(110,80,30);
-    doc.text(expLines,ML+5,ly);
+    // Spiegazione
+    if(expLines.length>0){
+      ly+=LHe*0.6;
+      doc.setFont('helvetica','italic');doc.setFontSize(8.5);doc.setTextColor(...MID);
+      doc.text(expLines,ML+10,ly);
+    }
 
     y+=blockH+3;
   });
